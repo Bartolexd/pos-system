@@ -427,8 +427,7 @@ const [montoRecibido, setMontoRecibido] = useState("");
   const handleAddProductByCode = (code) => {
     const trimmed = code.trim();
     if (!trimmed) { alert("Ingresa un código válido."); return; }
-    const producto = productos.find((p) => p.codigo === trimmed || p.id === trimmed);
-    if (!producto) { alert(`No se encontró producto con el código ${trimmed}.`); return; }
+const producto = productos.find((p) => String(p.codigo) === String(trimmed) || p.id === trimmed);    if (!producto) { alert(`No se encontró producto con el código ${trimmed}.`); return; }
     handleAddToCart(producto);
     setCodigoInput("");
   };
