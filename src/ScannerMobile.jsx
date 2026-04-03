@@ -22,19 +22,24 @@ export default function ScannerMobile() {
   const [history, setHistory] = useState([]);
   const [manualCode, setManualCode] = useState("");
 
-  const enviarCodigo = async (code) => {
-    if (!code.trim()) return;
-    try {
-      const sessionRef = ref(db, `scan-sessions/${sessionId}`);
-      await set(sessionRef, { code: code.trim(), timestamp: Date.now() });
-      setTimeout(() => remove(sessionRef), 1000);
-      setStatus(`✅ ${code.trim()}`);
-      setHistory(h => [{ code: code.trim(), time: new Date().toLocaleTimeString() }, ...h].slice(0, 8));
-      setManualCode("");
-    } catch (e) {
-      setStatus("❌ Error al enviar");
-    }
-  };
+ const enviarCodigo = async (code) => {
+  const limpio = String(code).replace(/\D/g, ""); // 🔥 SOLO NÚMEROS
+
+  if (!limpio) return;
+
+  try {
+    const sessionRef = ref(db, `scan-sessions/${sessionId}`);
+    await set(sessionRef, { code: limpio, timestamp: Date.now() });
+
+    setTimeout(() => remove(sessionRef), 1000);
+
+    setStatus(`✅ ${limpio}`);
+    setHistory(h => [{ code: limpio, time: new Date().toLocaleTimeString() }, ...h].slice(0, 8));
+    setManualCode("");
+  } catch (e) {
+    setStatus("❌ Error al enviar");
+  }
+};
 
   return (
     <div style={{
