@@ -207,7 +207,7 @@ const [montoRecibido, setMontoRecibido] = useState("");
   // ─────────────────────────────────────────────────────────────────────────
   // ESCÁNER REMOTO
   // ─────────────────────────────────────────────────────────────────────────
-  useEffect(() => {
+useEffect(() => {
     if (!user) return;
     const sessionRef = ref(rtdb, `scan-sessions/${sessionId}`);
     const unsub = onValue(sessionRef, (snap) => {
@@ -220,7 +220,7 @@ const [montoRecibido, setMontoRecibido] = useState("");
       setTimeout(() => remove(sessionRef), 500);
     });
     return () => unsub();
-  }, [user, sessionId]);
+  }, [user, sessionId, productos]);
 
   useEffect(() => {
     setBarcodeSupported(
@@ -424,14 +424,15 @@ const [montoRecibido, setMontoRecibido] = useState("");
     setCarrito((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleAddProductByCode = (code) => {
+const handleAddProductByCode = (code) => {
     const trimmed = code.trim();
     if (!trimmed) { alert("Ingresa un código válido."); return; }
-const producto = productos.find((p) => String(p.codigo) === String(trimmed) || p.id === trimmed);    if (!producto) { alert(`No se encontró producto con el código ${trimmed}.`); return; }
+    console.log("BUSCANDO:", trimmed, "EN:", productos.map(p => p.codigo));
+    const producto = productos.find((p) => String(p.codigo) === String(trimmed) || p.id === trimmed);
+    if (!producto) { alert(`No se encontró producto con el código ${trimmed}.`); return; }
     handleAddToCart(producto);
     setCodigoInput("");
   };
-
   // ─────────────────────────────────────────────────────────────────────────
   // VENTA / CHECKOUT
   // ─────────────────────────────────────────────────────────────────────────
