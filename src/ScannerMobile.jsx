@@ -1,8 +1,8 @@
-
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { initializeApp, getApps } from "firebase/app";
 import { getDatabase, ref, set, remove } from "firebase/database";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC3v1Yh2ZSoZtPNjzzdQQjulkC2Fx_P_T0",
@@ -20,101 +20,56 @@ const db = getDatabase(app);
 export default function ScannerMobile() {
   const { sessionId } = useParams();
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const readerRef = useRef(null);
+  const cooldownRef = useRef(false);
   const [status, setStatus] = useState("Iniciando cámara...");
   const [error, setError] = useState("");
   const [history, setHistory] = useState([]);
-  const cooldownRef = useRef(false);
-  const animRef = useRef(null);
 
   useEffect(() => {
-    let stream = null;
+    const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
 
-    const startCamera = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        });
+    reader.decodeFromConstraints(
+      {
+        audio: false,
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      },
+      videoRef.current,
+      async (result, err) => {
+        if (result && !cooldownRef.current) {
+          const code = result.getText();
+          cooldownRef.current = true;
+          setTimeout(() => { cooldownRef.current = false; }, 2500);
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.setAttribute("playsinline", true);
-          await videoRef.current.play();
-          setStatus("Apunta al código de barras");
-          startScanning();
-        }
-      } catch (e) {
-        console.error(e);
-        setError("No se pudo acceder a la cámara. Ve a Configuración → Safari → Cámara → Permitir.");
-      }
-    };
+          if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
 
-    const startScanning = async () => {
-      try {
-        const ZXing = await import("@zxing/library");
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-          ZXing.BarcodeFormat.EAN_13,
-          ZXing.BarcodeFormat.EAN_8,
-          ZXing.BarcodeFormat.CODE_128,
-          ZXing.BarcodeFormat.CODE_39,
-          ZXing.BarcodeFormat.UPC_A,
-          ZXing.BarcodeFormat.UPC_E,
-        ]);
-
-        const reader = new ZXing.BrowserMultiFormatReader(hints);
-
-        const scanLoop = async () => {
-          if (!videoRef.current || !canvasRef.current) return;
-          const video = videoRef.current;
-          const canvas = canvasRef.current;
-
-          if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            try {
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const luminanceSource = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
-              const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-              const result = reader.decode(binaryBitmap);
-
-              if (result && !cooldownRef.current) {
-                const code = result.getText();
-                cooldownRef.current = true;
-                setTimeout(() => { cooldownRef.current = false; }, 2500);
-
-                if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
-
-                const sessionRef = ref(db, `scan-sessions/${sessionId}`);
-                await set(sessionRef, { code, timestamp: Date.now() });
-                setTimeout(() => remove(sessionRef), 1000);
-
-                setStatus(`✅ ${code}`);
-                setHistory(h => [{ code, time: new Date().toLocaleTimeString() }, ...h].slice(0, 6));
-              }
-            } catch (e) {
-              // No se detectó código, continuar
-            }
+          try {
+            const sessionRef = ref(db, `scan-sessions/${sessionId}`);
+            await set(sessionRef, { code, timestamp: Date.now() });
+            setTimeout(() => remove(sessionRef), 1000);
+            setStatus(`✅ ${code}`);
+            setHistory(h => [{ code, time: new Date().toLocaleTimeString() }, ...h].slice(0, 6));
+          } catch (e) {
+            setError("Error al enviar el código.");
           }
-
-          animRef.current = requestAnimationFrame(scanLoop);
-        };
-
-        animRef.current = requestAnimationFrame(scanLoop);
-      } catch (e) {
-        console.error(e);
-        setError("Error al iniciar el escáner.");
+        }
+        if (err && err.name !== "NotFoundException") {
+          setStatus("Apunta al código de barras");
+        } else if (!result) {
+          setStatus("Apunta al código de barras");
+        }
       }
-    };
-
-    startCamera();
+    ).catch((e) => {
+      setError("No se pudo acceder a la cámara. Verifica los permisos en Safari.");
+    });
 
     return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop());
-      if (animRef.current) cancelAnimationFrame(animRef.current);
+      if (readerRef.current) readerRef.current.reset();
     };
   }, [sessionId]);
 
@@ -137,15 +92,11 @@ export default function ScannerMobile() {
         position: "relative", background: "#111",
       }}>
         <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        <canvas ref={canvasRef} style={{ display: "none" }} />
         <div style={{
           position: "absolute", inset: 0, display: "flex",
           alignItems: "center", justifyContent: "center", pointerEvents: "none",
         }}>
-          <div style={{
-            width: "60%", aspectRatio: "2/1",
-            border: "2px solid #39ff8f", borderRadius: 4,
-          }} />
+          <div style={{ width: "60%", aspectRatio: "2/1", border: "2px solid #39ff8f", borderRadius: 4 }} />
         </div>
       </div>
 
