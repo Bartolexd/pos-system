@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { initializeApp, getApps } from "firebase/app";
 import { getDatabase, ref, set, remove } from "firebase/database";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { Html5Qrcode } from "html5-qrcode";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC3v1Yh2ZSoZtPNjzzdQQjulkC2Fx_P_T0",
@@ -19,57 +19,47 @@ const db = getDatabase(app);
 
 export default function ScannerMobile() {
   const { sessionId } = useParams();
-  const videoRef = useRef(null);
-  const readerRef = useRef(null);
   const cooldownRef = useRef(false);
+  const scannerRef = useRef(null);
   const [status, setStatus] = useState("Iniciando cámara...");
   const [error, setError] = useState("");
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    const reader = new BrowserMultiFormatReader();
-    readerRef.current = reader;
+    const scanner = new Html5Qrcode("reader");
+    scannerRef.current = scanner;
 
-    reader.decodeFromConstraints(
-      {
-        audio: false,
-        video: {
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 120 } },
+      async (code) => {
+        if (cooldownRef.current) return;
+        cooldownRef.current = true;
+        setTimeout(() => { cooldownRef.current = false; }, 2500);
+
+        if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
+
+        try {
+          const sessionRef = ref(db, `scan-sessions/${sessionId}`);
+          await set(sessionRef, { code, timestamp: Date.now() });
+          setTimeout(() => remove(sessionRef), 1000);
+          setStatus(`✅ ${code}`);
+          setHistory(h => [{ code, time: new Date().toLocaleTimeString() }, ...h].slice(0, 6));
+        } catch (e) {
+          setError("Error al enviar el código.");
+        }
       },
-      videoRef.current,
-      async (result, err) => {
-        if (result && !cooldownRef.current) {
-          const code = result.getText();
-          cooldownRef.current = true;
-          setTimeout(() => { cooldownRef.current = false; }, 2500);
-
-          if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
-
-          try {
-            const sessionRef = ref(db, `scan-sessions/${sessionId}`);
-            await set(sessionRef, { code, timestamp: Date.now() });
-            setTimeout(() => remove(sessionRef), 1000);
-            setStatus(`✅ ${code}`);
-            setHistory(h => [{ code, time: new Date().toLocaleTimeString() }, ...h].slice(0, 6));
-          } catch (e) {
-            setError("Error al enviar el código.");
-          }
-        }
-        if (err && err.name !== "NotFoundException") {
-          setStatus("Apunta al código de barras");
-        } else if (!result) {
-          setStatus("Apunta al código de barras");
-        }
-      }
-    ).catch((e) => {
-      setError("No se pudo acceder a la cámara. Verifica los permisos en Safari.");
+      () => {} // error silencioso cuando no detecta nada
+    ).then(() => {
+      setStatus("Apunta al código de barras");
+    }).catch((e) => {
+      setError("No se pudo acceder a la cámara. Verifica los permisos en Safari: Configuración → Safari → Cámara → Permitir.");
     });
 
     return () => {
-      if (readerRef.current) readerRef.current.reset();
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+      }
     };
   }, [sessionId]);
 
@@ -86,19 +76,10 @@ export default function ScannerMobile() {
         </span>
       </div>
 
-      <div style={{
-        width: "100%", maxWidth: 380, aspectRatio: "1",
-        borderRadius: 20, overflow: "hidden", border: "1px solid #1e1e2e",
-        position: "relative", background: "#111",
-      }}>
-        <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        <div style={{
-          position: "absolute", inset: 0, display: "flex",
-          alignItems: "center", justifyContent: "center", pointerEvents: "none",
-        }}>
-          <div style={{ width: "60%", aspectRatio: "2/1", border: "2px solid #39ff8f", borderRadius: 4 }} />
-        </div>
-      </div>
+      <div id="reader" style={{
+        width: "100%", maxWidth: 380, borderRadius: 20,
+        overflow: "hidden", border: "1px solid #1e1e2e",
+      }} />
 
       <div style={{
         width: "100%", maxWidth: 380, background: "#111118",
