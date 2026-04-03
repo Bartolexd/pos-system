@@ -90,6 +90,7 @@ function App() {
 
   // ── Datos principales ──
   const [productos, setProductos] = useState([]);
+  const productosRef = useRef([]);
   const [ventas, setVentas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [cierres, setCierres] = useState([]);
@@ -258,7 +259,9 @@ useEffect(() => {
     setCargando(true);
     try {
       const querySnapshot = await getDocs(collection(db, "productos"));
-      setProductos(querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+const lista = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+setProductos(lista);
+productosRef.current = lista;
     } catch (error) {
       console.error("Error al cargar productos:", error);
       alert("No se pudieron cargar los productos.");
