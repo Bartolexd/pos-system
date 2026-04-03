@@ -21,7 +21,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "firebase/auth";
-import QRCode from "react-qr-code";
+import { QRCode } from "react-qr-code";
 import {
   Chart as ChartJS,
   CategoryScale,
