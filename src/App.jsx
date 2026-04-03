@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { auth, db, rtdb } from "./firebase/firebase";
 import { ref, onValue, remove } from "firebase/database";
 import {
@@ -210,11 +211,12 @@ const [montoRecibido, setMontoRecibido] = useState("");
     if (!user) return;
     const sessionRef = ref(rtdb, `scan-sessions/${sessionId}`);
     const unsub = onValue(sessionRef, (snap) => {
-    if (!snap.exists()) return;
-    const { code } = snap.val();
-    console.log("CÓDIGO RECIBIDO:", JSON.stringify(code));
-    setScannerConectado(true);
-    handleAddProductByCode(code);
+      if (!snap.exists()) return;
+      let code = snap.val().code;
+      code = code.replace(/"/g, "").trim();
+      console.log("CÓDIGO RECIBIDO LIMPIO:", code);
+      setScannerConectado(true);
+      handleAddProductByCode(code);
       setTimeout(() => remove(sessionRef), 500);
     });
     return () => unsub();
