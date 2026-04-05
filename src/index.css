@@ -898,3 +898,73 @@ body {
 }
 
 }
+/* 🔥 FIX GLOBAL MOBILE */
+html, body {
+  overflow-x: hidden;
+}
+
+/* 🔥 CONTENEDORES */
+.main-content,
+.page-content {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 🔥 GRID RESPONSIVE REAL */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* 🔥 CARDS NO SE ROMPAN */
+.card {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* 🔥 IMÁGENES ARREGLADAS */
+img, video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 🔥 PRODUCTOS */
+.product-card {
+  width: 100%;
+}
+
+/* 🔥 MOBILE HARD FIX */
+@media (max-width: 768px) {
+
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .page-content {
+    padding: 12px;
+  }
+
+  .topbar {
+    padding: 10px;
+  }
+}
