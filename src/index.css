@@ -815,3 +815,56 @@ body {
   border: 1px solid #39ff8f;
   box-shadow: 0 0 25px #39ff8f33;
 }
+@media (max-width: 768px) {
+
+  /* mata sidebar */
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  /* padding compacto */
+  .page-content {
+    padding: 10px;
+  }
+
+  /* grids a 1 columna */
+  .grid-2,
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* inputs full width */
+  .input {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  /* botones grandes */
+  .btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  /* upload más usable */
+  .img-upload-area {
+    padding: 14px;
+    font-size: 13px;
+  }
+
+  /* cards más compactas */
+  .card {
+    padding: 12px;
+  }
+
+  /* topbar más chica */
+  .topbar {
+    padding: 10px;
+  }
+
+}
