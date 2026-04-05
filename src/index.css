@@ -868,3 +868,33 @@ body {
   }
 
 }
+/* todo tu css arriba ↑ */
+
+@media (max-width: 768px) {
+
+  .sidebar {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  .page-content {
+    padding: 10px !important;
+  }
+
+  .grid-2,
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .product-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .card {
+  width: 100%;
+}
+
+}
