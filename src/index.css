@@ -1,3 +1,44 @@
+/* =========================
+   SYSTEM UI PRO (BASE)
+========================= */
+
+/* TIPOGRAFÍA */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* MEJOR RENDER */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* TRANSICIONES GLOBALES */
+button, .card, .product-card, .btn {
+  transition: all 0.2s ease;
+}
+
+/* GLASS EFFECT */
+.glass {
+  background: rgba(255,255,255,0.02);
+  backdrop-filter: blur(12px);
+}
+
+/* SOMBRAS PRO */
+.shadow-sm { box-shadow: 0 4px 10px rgba(0,0,0,0.25); }
+.shadow-md { box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+.shadow-lg { box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+
+/* HOVER GLOBAL */
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* SCROLL SUAVE */
+html {
+  scroll-behavior: smooth;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -178,10 +219,8 @@ body {
 
 /* ── CARDS ── */
 .card {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px 20px;
+  background: linear-gradient(180deg, #111118, #0c0c12);
+  border: 1px solid #1e1e2e;
 }
 
 .card h3 {
@@ -688,4 +727,91 @@ select.input { cursor: pointer; }
   .grid-2 { grid-template-columns: 1fr; }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .product-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+}
+/* =========================
+   VISUAL BOOST
+========================= */
+
+/* FONDO DINÁMICO */
+body {
+  background: radial-gradient(circle at 20% 10%, #141420, #050507 70%);
+}
+
+/* CARDS PRO */
+.card {
+  background: linear-gradient(160deg, #151520, #0a0a0f);
+  border: 1px solid #2a2a3e;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+/* KPI PRO */
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, #39ff8f22, transparent);
+  opacity: 0;
+  transition: 0.3s;
+}
+
+.kpi-card:hover::after {
+  opacity: 1;
+}
+
+/* BOTONES PRO */
+.btn-primary {
+  background: linear-gradient(135deg, #39ff8f, #00ffc8);
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 20px #39ff8f55;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 35px #39ff8f88;
+}
+
+/* PRODUCTOS PRO */
+.product-card {
+  background: #0c0c12;
+  border: 1px solid #2a2a3e;
+}
+
+.product-card:hover {
+  transform: scale(1.05);
+  border-color: #39ff8f;
+  box-shadow: 0 0 25px #39ff8f33;
+}
+
+/* INPUTS PRO */
+.input {
+  background: #050507;
+  border: 1px solid #2a2a3e;
+}
+
+.input:focus {
+  border-color: #39ff8f;
+  box-shadow: 0 0 12px #39ff8f33;
+}
+
+/* SIDEBAR PRO */
+.sidebar {
+  background: linear-gradient(180deg, #0f0f18, #07070d);
+}
+
+/* TOAST PRO */
+.toast {
+  background: #0c0c12;
+  border: 1px solid #39ff8f;
+  box-shadow: 0 0 25px #39ff8f33;
 }
