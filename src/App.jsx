@@ -87,6 +87,12 @@ export default function App() {
   const [dashTab, setDashTab] = useState("hoy");
   const inactivityTimer = useRef(null);
   const productosRef = useRef([]);
+  const [proveedores, setProveedores] = useState([]);
+const [entradas, setEntradas] = useState([]);
+const [formProveedor, setFormProveedor] = useState({ nombre: "", telefono: "", ruc: "", direccion: "" });
+const [editProveedorId, setEditProveedorId] = useState(null);
+const [formEntrada, setFormEntrada] = useState({ proveedorId: "", productoId: "", cantidad: "", precioCompra: "", notas: "", pagado: false });
+const [proveedorTab, setProveedorTab] = useState("lista"); // "lista" | "nueva-entrada" | "deudas"
 
   const showToast = useCallback((msg, type = "ok") => {
     setToast({ msg, type });
@@ -123,7 +129,7 @@ export default function App() {
   useEffect(() => { if (!user) return; cargarProductos(); cargarVentas(); }, [user]);
 
   useEffect(() => {
-    if (userRole === "admin") { cargarUsuarios(); cargarCierres(); cargarAuditLog(); }
+    if (userRole === "admin") { cargarUsuarios(); cargarCierres(); cargarAuditLog(); cargarProveedores();cargarEntradas(); }
     if (userRole === "cajero" && view !== "venta") setView("venta");
   }, [userRole]);
 
@@ -382,6 +388,94 @@ export default function App() {
     ventas.forEach((v) => (v.items || []).forEach((item) => { if (!contador[item.nombre]) contador[item.nombre] = { cantidad: 0, total: 0 }; contador[item.nombre].cantidad += item.cantidad; contador[item.nombre].total += item.precio * item.cantidad; }));
     return Object.entries(contador).map(([nombre, data]) => ({ nombre, ...data })).sort((a, b) => b.cantidad - a.cantidad).slice(0, 8);
   })();
+  const cargarProveedores = async () => {
+  try {
+    const qs = await getDocs(collection(db, "proveedores"));
+    setProveedores(qs.docs.map(d => ({ id: d.id, ...d.data() })));
+  } catch (e) { console.error(e); }
+};
+
+const cargarEntradas = async () => {
+  try {
+    const qs = await getDocs(collection(db, "entradas"));
+    const lista = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    setEntradas(lista);
+  } catch (e) { console.error(e); }
+};
+
+const handleGuardarProveedor = async (e) => {
+  e.preventDefault();
+  if (!formProveedor.nombre.trim()) { showToast("El nombre es obligatorio", "error"); return; }
+  try {
+    setLoadingAction(true);
+    if (editProveedorId) {
+      await updateDoc(doc(db, "proveedores", editProveedorId), formProveedor);
+      showToast("Proveedor actualizado");
+    } else {
+      await addDoc(collection(db, "proveedores"), { ...formProveedor, createdAt: serverTimestamp() });
+      showToast("Proveedor agregado");
+    }
+    setFormProveedor({ nombre: "", telefono: "", ruc: "", direccion: "" });
+    setEditProveedorId(null);
+    cargarProveedores();
+  } catch (e) { showToast("No se pudo guardar", "error"); }
+  finally { setLoadingAction(false); }
+};
+
+const handleEliminarProveedor = async (id) => {
+  if (!window.confirm("¿Eliminar este proveedor?")) return;
+  try {
+    await deleteDoc(doc(db, "proveedores", id));
+    cargarProveedores();
+    showToast("Proveedor eliminado");
+  } catch (e) { showToast("No se pudo eliminar", "error"); }
+};
+
+const handleRegistrarEntrada = async (e) => {
+  e.preventDefault();
+  if (!formEntrada.proveedorId || !formEntrada.productoId || !formEntrada.cantidad || !formEntrada.precioCompra) {
+    showToast("Completa todos los campos", "error"); return;
+  }
+  const cantidad = parseInt(formEntrada.cantidad);
+  const precioCompra = parseFloat(formEntrada.precioCompra);
+  const producto = productos.find(p => p.id === formEntrada.productoId);
+  const proveedor = proveedores.find(p => p.id === formEntrada.proveedorId);
+  if (!producto || !proveedor) { showToast("Producto o proveedor no encontrado", "error"); return; }
+  try {
+    setLoadingAction(true);
+    // Registrar entrada
+    await addDoc(collection(db, "entradas"), {
+      proveedorId: formEntrada.proveedorId,
+      proveedorNombre: proveedor.nombre,
+      productoId: formEntrada.productoId,
+      productoNombre: producto.nombre,
+      cantidad,
+      precioCompra,
+      total: cantidad * precioCompra,
+      notas: formEntrada.notas,
+      pagado: formEntrada.pagado,
+      createdAt: serverTimestamp(),
+    });
+    // Actualizar stock automáticamente
+    const nuevoStock = (producto.stock || 0) + cantidad;
+    await updateDoc(doc(db, "productos", formEntrada.productoId), { stock: nuevoStock });
+    await registrarAccion(db, user.email, "ENTRADA_MERCADERIA", `${producto.nombre} x${cantidad} de ${proveedor.nombre}`);
+    showToast(`✓ Stock de ${producto.nombre} actualizado a ${nuevoStock}`);
+    setFormEntrada({ proveedorId: "", productoId: "", cantidad: "", precioCompra: "", notas: "", pagado: false });
+    cargarEntradas();
+    cargarProductos();
+  } catch (e) { showToast("No se pudo registrar la entrada", "error"); }
+  finally { setLoadingAction(false); }
+};
+
+const handleMarcarPagado = async (entradaId, pagado) => {
+  try {
+    await updateDoc(doc(db, "entradas", entradaId), { pagado: !pagado });
+    cargarEntradas();
+    showToast(!pagado ? "Marcado como pagado" : "Marcado como pendiente");
+  } catch (e) { showToast("Error al actualizar", "error"); }
+};
 
   const totalVentas = ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
   const productosVendidos = ventas.reduce((acc, v) => acc + (v.items || []).reduce((s, i) => s + i.cantidad, 0), 0);
@@ -403,6 +497,7 @@ export default function App() {
     { key: "usuarios", icon: "👥", label: "Usuarios", adminOnly: true },
     { key: "reportes", icon: "📋", label: "Reportes", adminOnly: true },
     { key: "auditoria", icon: "🔒", label: "Auditoría", adminOnly: true },
+    { key: "proveedores", icon: "🚚", label: "Proveedores", adminOnly: true },
   ];
 
   return (
@@ -808,6 +903,211 @@ export default function App() {
 
         </div>
       </main>
+      {view === "proveedores" && userRole === "admin" && (
+  <>
+    {/* Tabs */}
+    <div style={{ display: "flex", gap: 8 }}>
+      {[
+        { key: "lista", label: "📋 Proveedores" },
+        { key: "nueva-entrada", label: "📥 Registrar entrada" },
+        { key: "deudas", label: "💳 Deudas" },
+      ].map(t => (
+        <button key={t.key} className={`btn btn-sm ${proveedorTab === t.key ? "btn-primary" : ""}`} onClick={() => setProveedorTab(t.key)}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+
+    {/* Tab: Lista de proveedores */}
+    {proveedorTab === "lista" && (
+      <div className="grid-2">
+        <div className="card">
+          <h3>{editProveedorId ? "Editar proveedor" : "Agregar proveedor"}</h3>
+          <form onSubmit={handleGuardarProveedor} className="form-grid">
+            <input className="input" placeholder="Nombre *" value={formProveedor.nombre} onChange={e => setFormProveedor({ ...formProveedor, nombre: e.target.value })} />
+            <input className="input" placeholder="Teléfono" value={formProveedor.telefono} onChange={e => setFormProveedor({ ...formProveedor, telefono: e.target.value })} />
+            <input className="input" placeholder="RUC" value={formProveedor.ruc} onChange={e => setFormProveedor({ ...formProveedor, ruc: e.target.value })} />
+            <input className="input" placeholder="Dirección" value={formProveedor.direccion} onChange={e => setFormProveedor({ ...formProveedor, direccion: e.target.value })} />
+            <div className="form-actions">
+              <button className="btn btn-primary" type="submit" disabled={loadingAction} style={{ flex: 1 }}>
+                {loadingAction ? "Guardando..." : editProveedorId ? "Actualizar" : "Agregar proveedor"}
+              </button>
+              {editProveedorId && <button className="btn" type="button" onClick={() => { setEditProveedorId(null); setFormProveedor({ nombre: "", telefono: "", ruc: "", direccion: "" }); }}>Cancelar</button>}
+            </div>
+          </form>
+        </div>
+        <div className="card">
+          <h3>Proveedores registrados ({proveedores.length})</h3>
+          {proveedores.length === 0 ? <p className="note">No hay proveedores aún.</p> : (
+            <div className="list-panel">
+              {proveedores.map(p => (
+                <div key={p.id} className="list-item">
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "#1a2e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🚚</div>
+                  <div className="list-item-info">
+                    <div className="list-item-name">{p.nombre}</div>
+                    <div className="list-item-meta">
+                      {p.telefono && `📞 ${p.telefono}`}
+                      {p.ruc && ` · RUC: ${p.ruc}`}
+                      {p.direccion && ` · ${p.direccion}`}
+                    </div>
+                  </div>
+                  <div className="list-item-actions">
+                    <button className="btn btn-xs" onClick={() => { setEditProveedorId(p.id); setFormProveedor({ nombre: p.nombre, telefono: p.telefono || "", ruc: p.ruc || "", direccion: p.direccion || "" }); }}>Editar</button>
+                    <button className="btn btn-xs btn-danger" onClick={() => handleEliminarProveedor(p.id)}>Eliminar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* Tab: Registrar entrada */}
+    {proveedorTab === "nueva-entrada" && (
+      <div className="grid-2">
+        <div className="card">
+          <h3>Registrar entrada de mercadería</h3>
+          <form onSubmit={handleRegistrarEntrada} className="form-grid">
+            <div>
+              <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Proveedor *</label>
+              <select className="input" value={formEntrada.proveedorId} onChange={e => setFormEntrada({ ...formEntrada, proveedorId: e.target.value })}>
+                <option value="">Selecciona un proveedor...</option>
+                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Producto *</label>
+              <select className="input" value={formEntrada.productoId} onChange={e => setFormEntrada({ ...formEntrada, productoId: e.target.value })}>
+                <option value="">Selecciona un producto...</option>
+                {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (stock: {p.stock})</option>)}
+              </select>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div>
+                <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Cantidad *</label>
+                <input className="input" type="number" min="1" placeholder="0" value={formEntrada.cantidad} onChange={e => setFormEntrada({ ...formEntrada, cantidad: e.target.value })} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Precio de costo (S/) *</label>
+                <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={formEntrada.precioCompra} onChange={e => setFormEntrada({ ...formEntrada, precioCompra: e.target.value })} />
+              </div>
+            </div>
+            {formEntrada.cantidad && formEntrada.precioCompra && (
+              <div style={{ background: "#1a2e20", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 13, color: "#888" }}>Total a pagar</span>
+                <strong style={{ color: "#39ff8f" }}>S/{(Number(formEntrada.cantidad) * Number(formEntrada.precioCompra)).toFixed(2)}</strong>
+              </div>
+            )}
+            <input className="input" placeholder="Notas (opcional)" value={formEntrada.notas} onChange={e => setFormEntrada({ ...formEntrada, notas: e.target.value })} />
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13 }}>
+              <input type="checkbox" checked={formEntrada.pagado} onChange={e => setFormEntrada({ ...formEntrada, pagado: e.target.checked })} style={{ width: 16, height: 16 }} />
+              <span style={{ color: "#888" }}>Marcar como pagado al registrar</span>
+            </label>
+            <button className="btn btn-primary" type="submit" disabled={loadingAction}>
+              {loadingAction ? "Registrando..." : "📥 Registrar entrada y actualizar stock"}
+            </button>
+          </form>
+        </div>
+        <div className="card">
+          <h3>Últimas entradas</h3>
+          {entradas.length === 0 ? <p className="note">Sin entradas registradas.</p> : (
+            <div className="list-panel">
+              {entradas.slice(0, 15).map(e => (
+                <div key={e.id} className="list-item">
+                  <div className="list-item-info">
+                    <div className="list-item-name">{e.productoNombre}</div>
+                    <div className="list-item-meta">
+                      {e.proveedorNombre} · {e.cantidad} unidades · S/{e.precioCompra?.toFixed(2)} c/u
+                      {e.createdAt?.seconds && ` · ${new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE")}`}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#39ff8f" }}>S/{e.total?.toFixed(2)}</div>
+                    <span className={`badge ${e.pagado ? "badge-green" : "badge-red"}`}>{e.pagado ? "Pagado" : "Pendiente"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* Tab: Deudas */}
+    {proveedorTab === "deudas" && (
+      <>
+        {/* Resumen por proveedor */}
+        <div className="kpi-grid">
+          {proveedores.map(prov => {
+            const entradasProv = entradas.filter(e => e.proveedorId === prov.id && !e.pagado);
+            const totalDeuda = entradasProv.reduce((acc, e) => acc + Number(e.total || 0), 0);
+            if (totalDeuda === 0) return null;
+            return (
+              <div key={prov.id} className="kpi-card" style={{ borderLeft: "3px solid #ff6b6b" }}>
+                <div className="kpi-label">{prov.nombre}</div>
+                <div className="kpi-value red">S/{totalDeuda.toFixed(2)}</div>
+                <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>{entradasProv.length} entrada{entradasProv.length !== 1 ? "s" : ""} pendiente{entradasProv.length !== 1 ? "s" : ""}</div>
+              </div>
+            );
+          }).filter(Boolean)}
+          {proveedores.every(prov => entradas.filter(e => e.proveedorId === prov.id && !e.pagado).reduce((acc, e) => acc + Number(e.total || 0), 0) === 0) && (
+            <p className="note">🎉 No tienes deudas pendientes con proveedores.</p>
+          )}
+        </div>
+
+        {/* Detalle de entradas pendientes */}
+        <div className="card">
+          <h3>Entradas pendientes de pago</h3>
+          {entradas.filter(e => !e.pagado).length === 0 ? <p className="note">Sin pendientes.</p> : (
+            <table className="table">
+              <thead>
+                <tr><th>Fecha</th><th>Proveedor</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Acción</th></tr>
+              </thead>
+              <tbody>
+                {entradas.filter(e => !e.pagado).map(e => (
+                  <tr key={e.id}>
+                    <td style={{ fontSize: 11, color: "#555" }}>{e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE") : "—"}</td>
+                    <td style={{ fontSize: 12 }}>{e.proveedorNombre}</td>
+                    <td style={{ fontSize: 12 }}>{e.productoNombre} x{e.cantidad}</td>
+                    <td style={{ fontSize: 12 }}>{e.cantidad}</td>
+                    <td style={{ color: "#ff6b6b", fontWeight: 700 }}>S/{Number(e.total).toFixed(2)}</td>
+                    <td>
+                      <button className="btn btn-xs btn-primary" onClick={() => handleMarcarPagado(e.id, e.pagado)}>
+                        ✓ Pagado
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Historial de pagados */}
+        <div className="card">
+          <h3>Historial de pagos realizados</h3>
+          {entradas.filter(e => e.pagado).length === 0 ? <p className="note">Sin pagos registrados.</p> : (
+            <div className="list-panel">
+              {entradas.filter(e => e.pagado).map(e => (
+                <div key={e.id} className="list-item">
+                  <div className="list-item-info">
+                    <div className="list-item-name">{e.productoNombre} x{e.cantidad}</div>
+                    <div className="list-item-meta">{e.proveedorNombre} · {e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE") : ""}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#39ff8f" }}>S/{Number(e.total).toFixed(2)}</div>
+                    <button className="btn btn-xs" onClick={() => handleMarcarPagado(e.id, e.pagado)} style={{ marginTop: 4, fontSize: 10 }}>Marcar pendiente</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </>
+    )}
+  </>
+)}
 
       {showQR && (
         <div className="modal-overlay" onClick={() => setShowQR(false)}>
