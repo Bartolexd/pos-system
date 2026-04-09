@@ -877,7 +877,7 @@ const handleMarcarPagado = async (entradaId, pagado) => {
             </>
           )}
 
-          {view === "auditoria" && userRole === "admin" && (
+     {view === "auditoria" && userRole === "admin" && (
             <div className="card">
               <div className="section-header">
                 <h3 style={{ margin: 0 }}>Registro de auditoría</h3>
@@ -901,195 +901,201 @@ const handleMarcarPagado = async (entradaId, pagado) => {
             </div>
           )}
 
+          {/* ════ PROVEEDORES ════ */}
+          {view === "proveedores" && userRole === "admin" && (
+            <>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[
+                  { key: "lista", label: "📋 Proveedores" },
+                  { key: "nueva-entrada", label: "📥 Registrar entrada" },
+                  { key: "deudas", label: "💳 Deudas" },
+                ].map(t => (
+                  <button key={t.key} className={`btn btn-sm ${proveedorTab === t.key ? "btn-primary" : ""}`} onClick={() => setProveedorTab(t.key)}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {proveedorTab === "lista" && (
+                <div className="grid-2">
+                  <div className="card">
+                    <h3>{editProveedorId ? "Editar proveedor" : "Agregar proveedor"}</h3>
+                    <form onSubmit={handleGuardarProveedor} className="form-grid">
+                      <input className="input" placeholder="Nombre *" value={formProveedor.nombre} onChange={e => setFormProveedor({ ...formProveedor, nombre: e.target.value })} />
+                      <input className="input" placeholder="Teléfono" value={formProveedor.telefono} onChange={e => setFormProveedor({ ...formProveedor, telefono: e.target.value })} />
+                      <input className="input" placeholder="RUC" value={formProveedor.ruc} onChange={e => setFormProveedor({ ...formProveedor, ruc: e.target.value })} />
+                      <input className="input" placeholder="Dirección" value={formProveedor.direccion} onChange={e => setFormProveedor({ ...formProveedor, direccion: e.target.value })} />
+                      <div className="form-actions">
+                        <button className="btn btn-primary" type="submit" disabled={loadingAction} style={{ flex: 1 }}>
+                          {loadingAction ? "Guardando..." : editProveedorId ? "Actualizar" : "Agregar proveedor"}
+                        </button>
+                        {editProveedorId && <button className="btn" type="button" onClick={() => { setEditProveedorId(null); setFormProveedor({ nombre: "", telefono: "", ruc: "", direccion: "" }); }}>Cancelar</button>}
+                      </div>
+                    </form>
+                  </div>
+                  <div className="card">
+                    <h3>Proveedores registrados ({proveedores.length})</h3>
+                    {proveedores.length === 0 ? <p className="note">No hay proveedores aún.</p> : (
+                      <div className="list-panel">
+                        {proveedores.map(p => (
+                          <div key={p.id} className="list-item">
+                            <div style={{ width: 40, height: 40, borderRadius: 8, background: "#1a2e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🚚</div>
+                            <div className="list-item-info">
+                              <div className="list-item-name">{p.nombre}</div>
+                              <div className="list-item-meta">
+                                {p.telefono && `📞 ${p.telefono}`}
+                                {p.ruc && ` · RUC: ${p.ruc}`}
+                                {p.direccion && ` · ${p.direccion}`}
+                              </div>
+                            </div>
+                            <div className="list-item-actions">
+                              <button className="btn btn-xs" onClick={() => { setEditProveedorId(p.id); setFormProveedor({ nombre: p.nombre, telefono: p.telefono || "", ruc: p.ruc || "", direccion: p.direccion || "" }); }}>Editar</button>
+                              <button className="btn btn-xs btn-danger" onClick={() => handleEliminarProveedor(p.id)}>Eliminar</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {proveedorTab === "nueva-entrada" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+                  <div className="card">
+                    <h3>Registrar entrada de mercadería</h3>
+                    <form onSubmit={handleRegistrarEntrada} className="form-grid">
+                      <div>
+                        <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Proveedor *</label>
+                        <select className="input" value={formEntrada.proveedorId} onChange={e => setFormEntrada({ ...formEntrada, proveedorId: e.target.value })}>
+                          <option value="">Selecciona un proveedor...</option>
+                          {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Producto *</label>
+                        <select className="input" value={formEntrada.productoId} onChange={e => setFormEntrada({ ...formEntrada, productoId: e.target.value })}>
+                          <option value="">Selecciona un producto...</option>
+                          {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (stock: {p.stock})</option>)}
+                        </select>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
+                          <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Cantidad *</label>
+                          <input className="input" type="number" min="1" placeholder="0" value={formEntrada.cantidad} onChange={e => setFormEntrada({ ...formEntrada, cantidad: e.target.value })} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Precio de costo (S/) *</label>
+                          <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={formEntrada.precioCompra} onChange={e => setFormEntrada({ ...formEntrada, precioCompra: e.target.value })} />
+                        </div>
+                      </div>
+                      {formEntrada.cantidad && formEntrada.precioCompra && (
+                        <div style={{ background: "#1a2e20", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 13, color: "#888" }}>Total a pagar</span>
+                          <strong style={{ color: "#39ff8f" }}>S/{(Number(formEntrada.cantidad) * Number(formEntrada.precioCompra)).toFixed(2)}</strong>
+                        </div>
+                      )}
+                      <input className="input" placeholder="Notas (opcional)" value={formEntrada.notas} onChange={e => setFormEntrada({ ...formEntrada, notas: e.target.value })} />
+                      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13 }}>
+                        <input type="checkbox" checked={formEntrada.pagado} onChange={e => setFormEntrada({ ...formEntrada, pagado: e.target.checked })} style={{ width: 16, height: 16 }} />
+                        <span style={{ color: "#888" }}>Marcar como pagado al registrar</span>
+                      </label>
+                      <button className="btn btn-primary" type="submit" disabled={loadingAction}>
+                        {loadingAction ? "Registrando..." : "📥 Registrar entrada y actualizar stock"}
+                      </button>
+                    </form>
+                  </div>
+                  <div className="card">
+                    <h3>Últimas entradas</h3>
+                    {entradas.length === 0 ? <p className="note">Sin entradas registradas.</p> : (
+                      <div className="list-panel">
+                        {entradas.slice(0, 15).map(e => (
+                          <div key={e.id} className="list-item">
+                            <div className="list-item-info">
+                              <div className="list-item-name">{e.productoNombre}</div>
+                              <div className="list-item-meta">
+                                {e.proveedorNombre} · {e.cantidad} unidades · S/{e.precioCompra?.toFixed(2)} c/u
+                                {e.createdAt?.seconds && ` · ${new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE")}`}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right", flexShrink: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#39ff8f" }}>S/{e.total?.toFixed(2)}</div>
+                              <span className={`badge ${e.pagado ? "badge-green" : "badge-red"}`}>{e.pagado ? "Pagado" : "Pendiente"}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {proveedorTab === "deudas" && (
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {proveedores.map(prov => {
+                      const entradasProv = entradas.filter(e => e.proveedorId === prov.id && !e.pagado);
+                      const totalDeuda = entradasProv.reduce((acc, e) => acc + Number(e.total || 0), 0);
+                      if (totalDeuda === 0) return null;
+                      return (
+                        <div key={prov.id} style={{ background: "#111118", border: "1px solid #ff4d4d44", borderLeft: "3px solid #ff6b6b", borderRadius: 10, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#f0ede8" }}>{prov.nombre}</div>
+                            <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{entradasProv.length} entrada{entradasProv.length !== 1 ? "s" : ""} pendiente{entradasProv.length !== 1 ? "s" : ""}</div>
+                          </div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: "#ff6b6b" }}>S/{totalDeuda.toFixed(2)}</div>
+                        </div>
+                      );
+                    }).filter(Boolean)}
+                    {proveedores.every(prov => entradas.filter(e => e.proveedorId === prov.id && !e.pagado).reduce((acc, e) => acc + Number(e.total || 0), 0) === 0) && (
+                      <p className="note">🎉 No tienes deudas pendientes.</p>
+                    )}
+                  </div>
+                  <div className="card">
+                    <h3>Entradas pendientes de pago</h3>
+                    {entradas.filter(e => !e.pagado).length === 0 ? <p className="note">Sin pendientes.</p> : (
+                      <table className="table">
+                        <thead><tr><th>Fecha</th><th>Proveedor</th><th>Producto</th><th>Total</th><th>Acción</th></tr></thead>
+                        <tbody>
+                          {entradas.filter(e => !e.pagado).map(e => (
+                            <tr key={e.id}>
+                              <td style={{ fontSize: 11, color: "#555" }}>{e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE") : "—"}</td>
+                              <td style={{ fontSize: 12 }}>{e.proveedorNombre}</td>
+                              <td style={{ fontSize: 12 }}>{e.productoNombre} x{e.cantidad}</td>
+                              <td style={{ color: "#ff6b6b", fontWeight: 700 }}>S/{Number(e.total).toFixed(2)}</td>
+                              <td><button className="btn btn-xs btn-primary" onClick={() => handleMarcarPagado(e.id, e.pagado)}>✓ Pagado</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                  <div className="card">
+                    <h3>Historial de pagos</h3>
+                    {entradas.filter(e => e.pagado).length === 0 ? <p className="note">Sin pagos registrados.</p> : (
+                      <div className="list-panel">
+                        {entradas.filter(e => e.pagado).map(e => (
+                          <div key={e.id} className="list-item">
+                            <div className="list-item-info">
+                              <div className="list-item-name">{e.productoNombre} x{e.cantidad}</div>
+                              <div className="list-item-meta">{e.proveedorNombre} · {e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE") : ""}</div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#39ff8f" }}>S/{Number(e.total).toFixed(2)}</div>
+                              <button className="btn btn-xs" onClick={() => handleMarcarPagado(e.id, e.pagado)} style={{ marginTop: 4, fontSize: 10 }}>Marcar pendiente</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
         </div>
       </main>
-      {view === "proveedores" && userRole === "admin" && (
-  <>
-    {/* Tabs */}
-    <div style={{ display: "flex", gap: 8 }}>
-      {[
-        { key: "lista", label: "📋 Proveedores" },
-        { key: "nueva-entrada", label: "📥 Registrar entrada" },
-        { key: "deudas", label: "💳 Deudas" },
-      ].map(t => (
-        <button key={t.key} className={`btn btn-sm ${proveedorTab === t.key ? "btn-primary" : ""}`} onClick={() => setProveedorTab(t.key)}>
-          {t.label}
-        </button>
-      ))}
-    </div>
-
-    {/* Tab: Lista de proveedores */}
-    {proveedorTab === "lista" && (
-      <div className="grid-2">
-        <div className="card">
-          <h3>{editProveedorId ? "Editar proveedor" : "Agregar proveedor"}</h3>
-          <form onSubmit={handleGuardarProveedor} className="form-grid">
-            <input className="input" placeholder="Nombre *" value={formProveedor.nombre} onChange={e => setFormProveedor({ ...formProveedor, nombre: e.target.value })} />
-            <input className="input" placeholder="Teléfono" value={formProveedor.telefono} onChange={e => setFormProveedor({ ...formProveedor, telefono: e.target.value })} />
-            <input className="input" placeholder="RUC" value={formProveedor.ruc} onChange={e => setFormProveedor({ ...formProveedor, ruc: e.target.value })} />
-            <input className="input" placeholder="Dirección" value={formProveedor.direccion} onChange={e => setFormProveedor({ ...formProveedor, direccion: e.target.value })} />
-            <div className="form-actions">
-              <button className="btn btn-primary" type="submit" disabled={loadingAction} style={{ flex: 1 }}>
-                {loadingAction ? "Guardando..." : editProveedorId ? "Actualizar" : "Agregar proveedor"}
-              </button>
-              {editProveedorId && <button className="btn" type="button" onClick={() => { setEditProveedorId(null); setFormProveedor({ nombre: "", telefono: "", ruc: "", direccion: "" }); }}>Cancelar</button>}
-            </div>
-          </form>
-        </div>
-        <div className="card">
-          <h3>Proveedores registrados ({proveedores.length})</h3>
-          {proveedores.length === 0 ? <p className="note">No hay proveedores aún.</p> : (
-            <div className="list-panel">
-              {proveedores.map(p => (
-                <div key={p.id} className="list-item">
-                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "#1a2e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🚚</div>
-                  <div className="list-item-info">
-                    <div className="list-item-name">{p.nombre}</div>
-                    <div className="list-item-meta">
-                      {p.telefono && `📞 ${p.telefono}`}
-                      {p.ruc && ` · RUC: ${p.ruc}`}
-                      {p.direccion && ` · ${p.direccion}`}
-                    </div>
-                  </div>
-                  <div className="list-item-actions">
-                    <button className="btn btn-xs" onClick={() => { setEditProveedorId(p.id); setFormProveedor({ nombre: p.nombre, telefono: p.telefono || "", ruc: p.ruc || "", direccion: p.direccion || "" }); }}>Editar</button>
-                    <button className="btn btn-xs btn-danger" onClick={() => handleEliminarProveedor(p.id)}>Eliminar</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-
-    {/* Tab: Registrar entrada */}
-    {proveedorTab === "nueva-entrada" && (
-       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
-        <div className="card">
-          <h3>Registrar entrada de mercadería</h3>
-          <form onSubmit={handleRegistrarEntrada} className="form-grid">
-            <div>
-              <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Proveedor *</label>
-              <select className="input" value={formEntrada.proveedorId} onChange={e => setFormEntrada({ ...formEntrada, proveedorId: e.target.value })}>
-                <option value="">Selecciona un proveedor...</option>
-                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Producto *</label>
-              <select className="input" value={formEntrada.productoId} onChange={e => setFormEntrada({ ...formEntrada, productoId: e.target.value })}>
-                <option value="">Selecciona un producto...</option>
-                {productos.map(p => <option key={p.id} value={p.id}>{p.nombre} (stock: {p.stock})</option>)}
-              </select>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div>
-                <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Cantidad *</label>
-                <input className="input" type="number" min="1" placeholder="0" value={formEntrada.cantidad} onChange={e => setFormEntrada({ ...formEntrada, cantidad: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, color: "#555", marginBottom: 4, display: "block" }}>Precio de costo (S/) *</label>
-                <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={formEntrada.precioCompra} onChange={e => setFormEntrada({ ...formEntrada, precioCompra: e.target.value })} />
-              </div>
-            </div>
-            {formEntrada.cantidad && formEntrada.precioCompra && (
-              <div style={{ background: "#1a2e20", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13, color: "#888" }}>Total a pagar</span>
-                <strong style={{ color: "#39ff8f" }}>S/{(Number(formEntrada.cantidad) * Number(formEntrada.precioCompra)).toFixed(2)}</strong>
-              </div>
-            )}
-            <input className="input" placeholder="Notas (opcional)" value={formEntrada.notas} onChange={e => setFormEntrada({ ...formEntrada, notas: e.target.value })} />
-            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13 }}>
-              <input type="checkbox" checked={formEntrada.pagado} onChange={e => setFormEntrada({ ...formEntrada, pagado: e.target.checked })} style={{ width: 16, height: 16 }} />
-              <span style={{ color: "#888" }}>Marcar como pagado al registrar</span>
-            </label>
-            <button className="btn btn-primary" type="submit" disabled={loadingAction}>
-              {loadingAction ? "Registrando..." : "📥 Registrar entrada y actualizar stock"}
-            </button>
-          </form>
-        </div>
-        <div className="card">
-          <h3>Últimas entradas</h3>
-          {entradas.length === 0 ? <p className="note">Sin entradas registradas.</p> : (
-            <div className="list-panel">
-              {entradas.slice(0, 15).map(e => (
-                <div key={e.id} className="list-item">
-                  <div className="list-item-info">
-                    <div className="list-item-name">{e.productoNombre}</div>
-                    <div className="list-item-meta">
-                      {e.proveedorNombre} · {e.cantidad} unidades · S/{e.precioCompra?.toFixed(2)} c/u
-                      {e.createdAt?.seconds && ` · ${new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE")}`}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#39ff8f" }}>S/{e.total?.toFixed(2)}</div>
-                    <span className={`badge ${e.pagado ? "badge-green" : "badge-red"}`}>{e.pagado ? "Pagado" : "Pendiente"}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-
-    {/* Tab: Deudas */}
-    {proveedorTab === "deudas" && (
-      <>
-        {/* Resumen por proveedor */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
-  {proveedores.map(prov => {
-    const entradasProv = entradas.filter(e => e.proveedorId === prov.id && !e.pagado);
-    const totalDeuda = entradasProv.reduce((acc, e) => acc + Number(e.total || 0), 0);
-    if (totalDeuda === 0) return null;
-    return (
-      <div key={prov.id} style={{
-        background: "#111118", border: "1px solid #ff4d4d44",
-        borderLeft: "3px solid #ff6b6b", borderRadius: 10,
-        padding: "12px 16px", display: "flex",
-        justifyContent: "space-between", alignItems: "center",
-      }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#f0ede8" }}>{prov.nombre}</div>
-          <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
-            {entradasProv.length} entrada{entradasProv.length !== 1 ? "s" : ""} pendiente{entradasProv.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#ff6b6b" }}>
-          S/{totalDeuda.toFixed(2)}
-        </div>
-      </div>
-    );
-  }).filter(Boolean)}
-  {proveedores.every(prov => entradas.filter(e => e.proveedorId === prov.id && !e.pagado).reduce((acc, e) => acc + Number(e.total || 0), 0) === 0) && (
-    <p className="note">🎉 No tienes deudas pendientes con proveedores.</p>
-  )}
-</div>
-        {/* Historial de pagados */}
-        <div className="card">
-          <h3>Historial de pagos realizados</h3>
-          {entradas.filter(e => e.pagado).length === 0 ? <p className="note">Sin pagos registrados.</p> : (
-            <div className="list-panel">
-              {entradas.filter(e => e.pagado).map(e => (
-                <div key={e.id} className="list-item">
-                  <div className="list-item-info">
-                    <div className="list-item-name">{e.productoNombre} x{e.cantidad}</div>
-                    <div className="list-item-meta">{e.proveedorNombre} · {e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE") : ""}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#39ff8f" }}>S/{Number(e.total).toFixed(2)}</div>
-                    <button className="btn btn-xs" onClick={() => handleMarcarPagado(e.id, e.pagado)} style={{ marginTop: 4, fontSize: 10 }}>Marcar pendiente</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </>
-    )}
-  </>
-)}
 
       {showQR && (
         <div className="modal-overlay" onClick={() => setShowQR(false)}>
