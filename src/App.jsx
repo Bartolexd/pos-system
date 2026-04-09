@@ -1038,52 +1038,34 @@ const handleMarcarPagado = async (entradaId, pagado) => {
     {proveedorTab === "deudas" && (
       <>
         {/* Resumen por proveedor */}
-        <div className="kpi-grid">
-          {proveedores.map(prov => {
-            const entradasProv = entradas.filter(e => e.proveedorId === prov.id && !e.pagado);
-            const totalDeuda = entradasProv.reduce((acc, e) => acc + Number(e.total || 0), 0);
-            if (totalDeuda === 0) return null;
-            return (
-              <div key={prov.id} className="kpi-card" style={{ borderLeft: "3px solid #ff6b6b" }}>
-                <div className="kpi-label">{prov.nombre}</div>
-                <div className="kpi-value red">S/{totalDeuda.toFixed(2)}</div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>{entradasProv.length} entrada{entradasProv.length !== 1 ? "s" : ""} pendiente{entradasProv.length !== 1 ? "s" : ""}</div>
-              </div>
-            );
-          }).filter(Boolean)}
-          {proveedores.every(prov => entradas.filter(e => e.proveedorId === prov.id && !e.pagado).reduce((acc, e) => acc + Number(e.total || 0), 0) === 0) && (
-            <p className="note">🎉 No tienes deudas pendientes con proveedores.</p>
-          )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
+  {proveedores.map(prov => {
+    const entradasProv = entradas.filter(e => e.proveedorId === prov.id && !e.pagado);
+    const totalDeuda = entradasProv.reduce((acc, e) => acc + Number(e.total || 0), 0);
+    if (totalDeuda === 0) return null;
+    return (
+      <div key={prov.id} style={{
+        background: "#111118", border: "1px solid #ff4d4d44",
+        borderLeft: "3px solid #ff6b6b", borderRadius: 10,
+        padding: "12px 16px", display: "flex",
+        justifyContent: "space-between", alignItems: "center",
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#f0ede8" }}>{prov.nombre}</div>
+          <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+            {entradasProv.length} entrada{entradasProv.length !== 1 ? "s" : ""} pendiente{entradasProv.length !== 1 ? "s" : ""}
+          </div>
         </div>
-
-        {/* Detalle de entradas pendientes */}
-        <div className="card">
-          <h3>Entradas pendientes de pago</h3>
-          {entradas.filter(e => !e.pagado).length === 0 ? <p className="note">Sin pendientes.</p> : (
-            <table className="table">
-              <thead>
-                <tr><th>Fecha</th><th>Proveedor</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Acción</th></tr>
-              </thead>
-              <tbody>
-                {entradas.filter(e => !e.pagado).map(e => (
-                  <tr key={e.id}>
-                    <td style={{ fontSize: 11, color: "#555" }}>{e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000).toLocaleDateString("es-PE") : "—"}</td>
-                    <td style={{ fontSize: 12 }}>{e.proveedorNombre}</td>
-                    <td style={{ fontSize: 12 }}>{e.productoNombre} x{e.cantidad}</td>
-                    <td style={{ fontSize: 12 }}>{e.cantidad}</td>
-                    <td style={{ color: "#ff6b6b", fontWeight: 700 }}>S/{Number(e.total).toFixed(2)}</td>
-                    <td>
-                      <button className="btn btn-xs btn-primary" onClick={() => handleMarcarPagado(e.id, e.pagado)}>
-                        ✓ Pagado
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div style={{ fontSize: 20, fontWeight: 700, color: "#ff6b6b" }}>
+          S/{totalDeuda.toFixed(2)}
         </div>
-
+      </div>
+    );
+  }).filter(Boolean)}
+  {proveedores.every(prov => entradas.filter(e => e.proveedorId === prov.id && !e.pagado).reduce((acc, e) => acc + Number(e.total || 0), 0) === 0) && (
+    <p className="note">🎉 No tienes deudas pendientes con proveedores.</p>
+  )}
+</div>
         {/* Historial de pagados */}
         <div className="card">
           <h3>Historial de pagos realizados</h3>
