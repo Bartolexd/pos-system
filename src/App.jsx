@@ -965,7 +965,7 @@ const handleMarcarPagado = async (entradaId, pagado) => {
 
     {/* Tab: Registrar entrada */}
     {proveedorTab === "nueva-entrada" && (
-      <div className="grid-2">
+       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
         <div className="card">
           <h3>Registrar entrada de mercadería</h3>
           <form onSubmit={handleRegistrarEntrada} className="form-grid">
