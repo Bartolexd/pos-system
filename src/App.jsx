@@ -504,7 +504,6 @@ const handleMarcarPagado = async (entradaId, pagado) => {
   return (
     <div className="app-layout">
       <aside className={`sidebar ${open ? "open" : ""}`}>
-        {open && <div className="overlay" onClick={() => setOpen(false)} />}
         <div className="sidebar-logo">
           <h1>mini<span>POS</span></h1>
           <p>Sistema de ventas</p>
@@ -530,7 +529,9 @@ const handleMarcarPagado = async (entradaId, pagado) => {
           <button className="nav-btn" onClick={async () => { await signOut(auth); }}><span className="nav-icon">🚪</span> Cerrar sesión</button>
         </div>
       </aside>
+              {open && <div className="overlay" onClick={() => setOpen(false)} />}
 
+      
       <main className="main-content">
         <div className="topbar">
             <button className="menu-btn" onClick={() => setOpen(true)}>☰</button>
