@@ -1052,3 +1052,24 @@ img, video {
     margin-left: 0;
   }
 }
+/* 🔥 ARREGLO REAL */
+@media (max-width: 768px) {
+
+  .sidebar {
+    transform: translateX(-100%);
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 220px;
+
+    z-index: 100; /* 🔥 MÁS ALTO QUE EL OVERLAY */
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .overlay {
+    z-index: 90; /* 🔥 MENOR que sidebar */
+  }
+}
