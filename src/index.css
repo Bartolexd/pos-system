@@ -981,5 +981,11 @@ img, video {
     margin-left: 0;
   }
 }
+.sidebar {
+  display: block !important;
+  transform: translateX(0) !important;
+  z-index: 9999 !important;
+  background: red !important;
+}
 
 
