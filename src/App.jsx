@@ -530,11 +530,13 @@ const handleMarcarPagado = async (entradaId, pagado) => {
         </div>
       </aside>
               {open && <div className="overlay" onClick={() => setOpen(false)} />}
+                {open && <div style={{color:"red"}}>ABIERTO</div>}
 
       
       <main className="main-content">
         <div className="topbar">
-            <button className="menu-btn" onClick={() => setOpen(true)}>☰</button>
+            <button
+  className="menu-btn"onClick={() => setOpen(prev => !prev)}> ☰</button>
           <div className="topbar-title">{navItems.find(n => n.key === view)?.icon} {navItems.find(n => n.key === view)?.label}</div>
           <div className="topbar-actions">
             {view === "inventario" && <button className="btn btn-sm btn-primary" onClick={() => { resetForm(); setView("inventario"); }}>+ Nuevo producto</button>}

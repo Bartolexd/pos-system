@@ -940,87 +940,7 @@ img, video {
 .product-card {
   width: 100%;
 }
-
-/* 🔥 MOBILE HARD FIX */
-@media (max-width: 768px) {
-
-  .sidebar {
-    display: none;
-  }
-
-  .main-content {
-    margin-left: 0;
-  }
-
-  .grid-4 {
-    grid-template-columns: 1fr;
-  }
-
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-
-  .page-content {
-    padding: 12px;
-  }
-
-  .topbar {
-    padding: 10px;
-  }
-}
-/* 🔥 MOBILE SIDEBAR */
-@media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-}
-/* 📱 MOBILE FIX REAL */
-@media (max-width: 768px) {
-
-  .page-content {
-    padding: 12px;
-  }
-
-  .kpi-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .product-grid {
-    grid-template-columns: 1fr; /* 🔥 1 sola columna */
-  }
-
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-
-  .card {
-    padding: 12px;
-  }
-
-  .topbar {
-    padding: 10px 12px;
-  }
-
-}
-/* 🔥 BOTÓN */
-.menu-btn {
-  display: none;
-}
-
-/* 🔥 OVERLAY */
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  z-index: 40;
-}
-
-/* 🔥 MOBILE */
+/* 🔥 MOBILE SIDEBAR REAL (ÚNICO) */
 @media (max-width: 768px) {
 
   .menu-btn {
@@ -1030,6 +950,7 @@ img, video {
     border: none;
     color: white;
     cursor: pointer;
+    z-index: 120;
   }
 
   .sidebar {
@@ -1039,30 +960,10 @@ img, video {
     bottom: 0;
     width: 220px;
 
-    transform: translateX(-100%); /* oculto */
-    transition: transform 0.3s ease;
-    z-index: 50;
-  }
-
-  .sidebar.open {
-    transform: translateX(0); /* aparece */
-  }
-
-  .main-content {
-    margin-left: 0;
-  }
-}
-/* 🔥 ARREGLO REAL */
-@media (max-width: 768px) {
-
-  .sidebar {
     transform: translateX(-100%);
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 220px;
+    transition: transform 0.3s ease;
 
-    z-index: 100; /* 🔥 MÁS ALTO QUE EL OVERLAY */
+    z-index: 110; /* 👈 encima de todo */
   }
 
   .sidebar.open {
@@ -1070,6 +971,15 @@ img, video {
   }
 
   .overlay {
-    z-index: 90; /* 🔥 MENOR que sidebar */
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+  }
+
+  .main-content {
+    margin-left: 0;
   }
 }
+
+
