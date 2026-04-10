@@ -520,7 +520,7 @@ const handleMarcarPagado = async (entradaId, pagado) => {
         <nav className="sidebar-nav">
           <div className="nav-section-label">Principal</div>
           {navItems.filter(n => !n.adminOnly || userRole === "admin").map((n) => (
-            <button key={n.key} className={`nav-btn ${view === n.key ? "active" : ""}`} onClick={() => setView(n.key)}>
+            <button key={n.key} className={`nav-btn ${view === n.key ? "active" : ""}`} onClick={() => setView(n.key) }>
               <span className="nav-icon">{n.icon}</span>{n.label}
             </button>
           ))}
@@ -530,7 +530,7 @@ const handleMarcarPagado = async (entradaId, pagado) => {
           <button className="nav-btn" onClick={async () => { await signOut(auth); }}><span className="nav-icon">🚪</span> Cerrar sesión</button>
         </div>
       </aside>
-//top barr
+
       <main className="main-content">
         <div className="topbar">
             <button className="menu-btn" onClick={() => setOpen(true)}>☰</button>

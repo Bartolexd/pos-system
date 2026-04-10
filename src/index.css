@@ -979,3 +979,31 @@ img, video {
     transform: translateX(0);
   }
 }
+/* 📱 MOBILE FIX REAL */
+@media (max-width: 768px) {
+
+  .page-content {
+    padding: 12px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-grid {
+    grid-template-columns: 1fr; /* 🔥 1 sola columna */
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  .topbar {
+    padding: 10px 12px;
+  }
+
+}
