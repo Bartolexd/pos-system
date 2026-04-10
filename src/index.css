@@ -1007,3 +1007,48 @@ img, video {
   }
 
 }
+/* 🔥 BOTÓN */
+.menu-btn {
+  display: none;
+}
+
+/* 🔥 OVERLAY */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 40;
+}
+
+/* 🔥 MOBILE */
+@media (max-width: 768px) {
+
+  .menu-btn {
+    display: block;
+    font-size: 22px;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+
+    transform: translateX(-100%); /* oculto */
+    transition: transform 0.3s ease;
+    z-index: 50;
+  }
+
+  .sidebar.open {
+    transform: translateX(0); /* aparece */
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+}
