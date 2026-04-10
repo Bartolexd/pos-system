@@ -93,6 +93,7 @@ const [formProveedor, setFormProveedor] = useState({ nombre: "", telefono: "", r
 const [editProveedorId, setEditProveedorId] = useState(null);
 const [formEntrada, setFormEntrada] = useState({ proveedorId: "", productoId: "", cantidad: "", precioCompra: "", notas: "", pagado: false });
 const [proveedorTab, setProveedorTab] = useState("lista"); // "lista" | "nueva-entrada" | "deudas"
+const [open, setOpen] = useState(false);
 
   const showToast = useCallback((msg, type = "ok") => {
     setToast({ msg, type });
@@ -502,7 +503,8 @@ const handleMarcarPagado = async (entradaId, pagado) => {
 
   return (
     <div className="app-layout">
-      <aside className="sidebar">
+      <aside className={`sidebar ${open ? "open" : ""}`}>
+        {open && <div className="overlay" onClick={() => setOpen(false)} />}
         <div className="sidebar-logo">
           <h1>mini<span>POS</span></h1>
           <p>Sistema de ventas</p>
@@ -528,9 +530,10 @@ const handleMarcarPagado = async (entradaId, pagado) => {
           <button className="nav-btn" onClick={async () => { await signOut(auth); }}><span className="nav-icon">🚪</span> Cerrar sesión</button>
         </div>
       </aside>
-
+//top barr
       <main className="main-content">
         <div className="topbar">
+            <button className="menu-btn" onClick={() => setOpen(true)}>☰</button>
           <div className="topbar-title">{navItems.find(n => n.key === view)?.icon} {navItems.find(n => n.key === view)?.label}</div>
           <div className="topbar-actions">
             {view === "inventario" && <button className="btn btn-sm btn-primary" onClick={() => { resetForm(); setView("inventario"); }}>+ Nuevo producto</button>}
