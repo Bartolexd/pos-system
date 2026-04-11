@@ -19,79 +19,117 @@ const db = getDatabase(app);
 export default function ScannerMobile() {
   const { sessionId } = useParams();
   const videoRef = useRef(null);
-  const readerRef = useRef(null);
+  const streamRef = useRef(null);
+  const animRef = useRef(null);
+  const detectorRef = useRef(null);
   const cooldownRef = useRef(false);
+
   const [status, setStatus] = useState("Iniciando cámara...");
   const [error, setError] = useState("");
   const [history, setHistory] = useState([]);
   const [manualCode, setManualCode] = useState("");
+  const [supported, setSupported] = useState(true);
 
   useEffect(() => {
-    let stopped = false;
+    // Verificar soporte de BarcodeDetector
+    if (!("BarcodeDetector" in window)) {
+      setSupported(false);
+      setError("Tu navegador no soporta escaneo automático.\nUsa Chrome en Android para escaneo automático.\nO ingresa el código manualmente abajo.");
+      return;
+    }
 
     const init = async () => {
       try {
-        const { BrowserMultiFormatReader, NotFoundException } = await import("@zxing/browser");
+        // Crear detector con todos los formatos de códigos de barras
+        detectorRef.current = new window.BarcodeDetector({
+          formats: [
+            "ean_13", "ean_8", "upc_a", "upc_e",
+            "code_39", "code_128", "code_93",
+            "itf", "codabar", "qr_code", "data_matrix",
+          ],
+        });
 
-        const reader = new BrowserMultiFormatReader();
-        readerRef.current = reader;
+        // Solicitar cámara trasera
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        });
 
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        streamRef.current = stream;
 
-        // Buscar cámara trasera
-        const backCamera = devices.find(d =>
-          d.label.toLowerCase().includes("back") ||
-          d.label.toLowerCase().includes("rear") ||
-          d.label.toLowerCase().includes("environment") ||
-          d.label.toLowerCase().includes("trasera")
-        ) || devices[devices.length - 1] || devices[0];
-
-        if (!backCamera) {
-          setError("No se encontró cámara disponible.");
-          return;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute("playsinline", "true");
+          await videoRef.current.play();
+          setStatus("Apunta al código de barras");
+          startScanLoop();
         }
-
-        setStatus("Apunta al código de barras");
-
-        await reader.decodeFromVideoDevice(
-          backCamera.deviceId,
-          videoRef.current,
-          async (result, err) => {
-            if (stopped) return;
-
-            if (result && !cooldownRef.current) {
-              const code = result.getText();
-              cooldownRef.current = true;
-              setTimeout(() => { cooldownRef.current = false; }, 3000);
-              if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-              await enviarCodigo(code);
-            }
-
-            if (err && !(err instanceof NotFoundException)) {
-              // Ignorar errores normales de "no detectado"
-            }
-          }
-        );
       } catch (e) {
-        if (!stopped) {
-          console.error(e);
-          if (e.name === "NotAllowedError") {
-            setError("Permiso de cámara denegado.\n\nVe a Configuración → Safari → Cámara → Permitir.");
-          } else if (e.name === "NotFoundError") {
-            setError("No se encontró cámara en este dispositivo.");
+        console.error(e);
+        // Si falla cámara trasera exacta, intentar con ideal
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" } },
+            audio: false,
+          });
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.setAttribute("playsinline", "true");
+            await videoRef.current.play();
+            setStatus("Apunta al código de barras");
+            startScanLoop();
+          }
+        } catch (e2) {
+          if (e2.name === "NotAllowedError") {
+            setError("Permiso de cámara denegado.\nVe a Configuración de Chrome → Permisos → Cámara → Permitir.");
           } else {
-            setError("Error al iniciar cámara: " + e.message);
+            setError("No se pudo acceder a la cámara: " + e2.message);
           }
         }
       }
     };
 
+    const startScanLoop = () => {
+      const scan = async () => {
+        if (!videoRef.current || !detectorRef.current) return;
+        if (videoRef.current.readyState < 2) {
+          animRef.current = requestAnimationFrame(scan);
+          return;
+        }
+
+        try {
+          const barcodes = await detectorRef.current.detect(videoRef.current);
+          if (barcodes.length > 0 && !cooldownRef.current) {
+            const code = barcodes[0].rawValue;
+            cooldownRef.current = true;
+            setTimeout(() => { cooldownRef.current = false; }, 2500);
+
+            // Vibrar al detectar
+            if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
+
+            await enviarCodigo(code);
+          }
+        } catch (e) {
+          // Ignorar errores de detección — son normales cuando no hay código
+        }
+
+        animRef.current = requestAnimationFrame(scan);
+      };
+
+      animRef.current = requestAnimationFrame(scan);
+    };
+
     init();
 
     return () => {
-      stopped = true;
-      if (readerRef.current) {
-        try { readerRef.current.reset(); } catch (e) {}
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
   }, [sessionId]);
@@ -106,7 +144,7 @@ export default function ScannerMobile() {
       setStatus(`✅ ${limpio}`);
       setHistory(h => [{ code: limpio, time: new Date().toLocaleTimeString() }, ...h].slice(0, 8));
     } catch (e) {
-      setStatus("❌ Error al enviar — verifica conexión");
+      setStatus("❌ Error al enviar");
     }
   };
 
@@ -123,6 +161,10 @@ export default function ScannerMobile() {
           90%  { opacity: 1; }
           100% { top: 90%; opacity: 0; }
         }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
       `}</style>
 
       {/* Header */}
@@ -131,57 +173,76 @@ export default function ScannerMobile() {
           width: 8, height: 8, borderRadius: "50%",
           background: error ? "#ff6b6b" : "#39ff8f",
           boxShadow: error ? "0 0 8px #ff6b6b" : "0 0 10px #39ff8f",
+          animation: !error ? "pulse 2s ease-in-out infinite" : "none",
         }} />
         <span style={{ fontSize: 12, color: "#666", letterSpacing: "0.15em" }}>
           ESCÁNER · #{sessionId?.slice(0, 8)}
         </span>
+        {supported && !error && (
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#39ff8f", background: "#1a2e20", padding: "2px 8px", borderRadius: 20 }}>
+            ● AUTO
+          </span>
+        )}
       </div>
 
-      {/* Visor */}
+      {/* Visor de cámara */}
       <div style={{
         width: "100%", maxWidth: 420, aspectRatio: "4/3",
         borderRadius: 16, overflow: "hidden",
-        border: "1px solid #1e1e2e", position: "relative", background: "#111",
+        border: `1px solid ${status.startsWith("✅") ? "#39ff8f44" : "#1e1e2e"}`,
+        position: "relative", background: "#111",
+        transition: "border-color 0.3s",
       }}>
         <video
           ref={videoRef}
           playsInline
           muted
+          autoPlay
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
         />
 
-        {/* Marco verde */}
-        <div style={{
-          position: "absolute", inset: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          pointerEvents: "none",
-        }}>
-          <div style={{ width: "70%", height: "35%", position: "relative" }}>
-            {[
-              { top: 0, left: 0, borderTop: "3px solid #39ff8f", borderLeft: "3px solid #39ff8f" },
-              { top: 0, right: 0, borderTop: "3px solid #39ff8f", borderRight: "3px solid #39ff8f" },
-              { bottom: 0, left: 0, borderBottom: "3px solid #39ff8f", borderLeft: "3px solid #39ff8f" },
-              { bottom: 0, right: 0, borderBottom: "3px solid #39ff8f", borderRight: "3px solid #39ff8f" },
-            ].map((s, i) => (
-              <div key={i} style={{ position: "absolute", width: 24, height: 24, borderRadius: 2, ...s }} />
-            ))}
-            <div style={{
-              position: "absolute", left: "5%", right: "5%", height: 2,
-              background: "linear-gradient(90deg, transparent, #39ff8f, transparent)",
-              boxShadow: "0 0 8px #39ff8f",
-              animation: "scanline 2s ease-in-out infinite",
-            }} />
+        {/* Marco de escaneo */}
+        {!error && (
+          <div style={{
+            position: "absolute", inset: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            pointerEvents: "none",
+          }}>
+            <div style={{ width: "72%", height: "36%", position: "relative" }}>
+              {[
+                { top: 0, left: 0, borderTop: "3px solid #39ff8f", borderLeft: "3px solid #39ff8f" },
+                { top: 0, right: 0, borderTop: "3px solid #39ff8f", borderRight: "3px solid #39ff8f" },
+                { bottom: 0, left: 0, borderBottom: "3px solid #39ff8f", borderLeft: "3px solid #39ff8f" },
+                { bottom: 0, right: 0, borderBottom: "3px solid #39ff8f", borderRight: "3px solid #39ff8f" },
+              ].map((s, i) => (
+                <div key={i} style={{ position: "absolute", width: 20, height: 20, ...s }} />
+              ))}
+              <div style={{
+                position: "absolute", left: "5%", right: "5%", height: 2,
+                background: "linear-gradient(90deg, transparent, #39ff8f, transparent)",
+                animation: "scanline 2s ease-in-out infinite",
+              }} />
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Flash verde al detectar */}
+        {status.startsWith("✅") && (
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "rgba(57,255,143,0.15)",
+            pointerEvents: "none",
+          }} />
+        )}
 
         {/* Error overlay */}
         {error && (
           <div style={{
-            position: "absolute", inset: 0, background: "rgba(10,10,15,0.92)",
+            position: "absolute", inset: 0, background: "rgba(10,10,15,0.93)",
             display: "flex", alignItems: "center", justifyContent: "center",
             padding: 24, textAlign: "center",
           }}>
-            <p style={{ color: "#ff6b6b", fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-line" }}>
+            <p style={{ color: "#ff6b6b", fontSize: 13, lineHeight: 1.8, whiteSpace: "pre-line" }}>
               {error}
             </p>
           </div>
@@ -192,21 +253,23 @@ export default function ScannerMobile() {
       <div style={{
         width: "100%", maxWidth: 420, background: "#111118",
         border: `1px solid ${status.startsWith("✅") ? "#39ff8f44" : status.startsWith("❌") ? "#ff4d4d44" : "#1e1e2e"}`,
-        borderRadius: 12, padding: "12px 16px", transition: "border-color 0.3s",
+        borderRadius: 12, padding: "12px 16px", transition: "all 0.3s",
       }}>
-        <div style={{ fontSize: 10, color: "#555", marginBottom: 3, letterSpacing: "0.1em" }}>ESTADO</div>
+        <div style={{ fontSize: 10, color: "#555", marginBottom: 3, letterSpacing: "0.1em" }}>
+          ÚLTIMO ESCANEO
+        </div>
         <div style={{
-          fontSize: 14, fontWeight: 700,
-          color: status.startsWith("✅") ? "#39ff8f" : status.startsWith("❌") ? "#ff6b6b" : "#f0ede8",
+          fontSize: 15, fontWeight: 700,
+          color: status.startsWith("✅") ? "#39ff8f" : status.startsWith("❌") ? "#ff6b6b" : "#888",
         }}>
           {status}
         </div>
       </div>
 
-      {/* Manual */}
+      {/* Input manual */}
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ fontSize: 10, color: "#444", letterSpacing: "0.1em", marginBottom: 6 }}>
-          O INGRESA MANUALMENTE
+          O INGRESA EL CÓDIGO MANUALMENTE
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <input
@@ -214,16 +277,22 @@ export default function ScannerMobile() {
             inputMode="numeric"
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { enviarCodigo(manualCode); setManualCode(""); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && manualCode.trim()) {
+                enviarCodigo(manualCode.trim());
+                setManualCode("");
+              }
+            }}
             placeholder="Ej: 7750182003827"
             style={{
-              flex: 1, background: "#111118", border: "1px solid #1e1e2e",
-              borderRadius: 10, padding: "10px 14px", color: "#f0ede8",
+              flex: 1, background: "#111118",
+              border: "1px solid #1e1e2e", borderRadius: 10,
+              padding: "10px 14px", color: "#f0ede8",
               fontFamily: "monospace", fontSize: 13, outline: "none",
             }}
           />
           <button
-            onClick={() => { enviarCodigo(manualCode); setManualCode(""); }}
+            onClick={() => { if (manualCode.trim()) { enviarCodigo(manualCode.trim()); setManualCode(""); } }}
             style={{
               background: "#1a2e20", border: "1px solid #39ff8f44",
               color: "#39ff8f", padding: "10px 16px", borderRadius: 10,
@@ -243,14 +312,30 @@ export default function ScannerMobile() {
             <div key={i} style={{
               background: "#111118", border: "1px solid #1a1a28",
               borderRadius: 8, padding: "8px 12px",
-              display: "flex", justifyContent: "space-between", fontSize: 12,
+              display: "flex", justifyContent: "space-between",
+              alignItems: "center", fontSize: 12,
             }}>
-              <span style={{ color: "#f0ede8" }}>{h.code}</span>
+              <span style={{ color: "#f0ede8", fontWeight: i === 0 ? 700 : 400 }}>{h.code}</span>
               <span style={{ color: "#444" }}>{h.time}</span>
             </div>
           ))}
         </div>
       )}
+
+      {/* Instrucciones */}
+      <div style={{
+        width: "100%", maxWidth: 420,
+        background: "#0d0d18", border: "1px solid #1e1e2e",
+        borderRadius: 10, padding: "12px 14px",
+      }}>
+        <div style={{ fontSize: 10, color: "#444", letterSpacing: "0.1em", marginBottom: 8 }}>INSTRUCCIONES</div>
+        <div style={{ fontSize: 11, color: "#555", lineHeight: 1.8 }}>
+          1. Apunta la cámara al código de barras<br />
+          2. Mantén el código dentro del marco verde<br />
+          3. El escaneo es automático — no toques nada<br />
+          4. Vibra al detectar un código ✓
+        </div>
+      </div>
     </div>
   );
 }
